@@ -25,58 +25,51 @@ class NPC(Actor):
         self.speed = 400
         self.vec = [random.random()*2-1, random.random()*2-1]
 
-    def update(self,dt):
+    def move(self,dt):
         pos = self.position
 
-        if random.random() < 0.005:
-            self.vec = [random.random()*2-1, random.random()*2-1]
         new_x = pos[0] + self.speed * self.vec[0] * dt
         new_y = pos[1] + self.speed * self.vec[1] * dt
         
-        self.position = (self.move_out(new_x,new_y))
+        self.position = (new_x,new_y)
         self.cshape.center = self.position
+
 
 class reflectN(NPC):
-    def __init__(self, x, y, color):
+    def __init__(self, x, y):
         super(reflectN, self).__init__(x, y,color=(0,255,0))
-        self.speed = 400
-        self.vec = [random.random()*2-1, random.random()*2-1]
+        self.speed = 200
 
     def update(self,dt):
-        pos = self.position
+        self.move(dt)
+        self.move_reflect(self.position,self.vec)
+        #self.vec = self.move_reflect(new_x,new_y,vec)
 
-        new_x = pos[0] + self.speed * self.vec[0] * dt
-        new_y = pos[1] + self.speed * self.vec[1] * dt
-        
-        self.position = (self.move_out(new_x,new_y))
-        self.cshape.center = self.position
 
-        coords = self.get_position()
-        width = self.canvas.winfo_width()
-        if coords[0] <= 0 or coords[2] >= width:
-            self.direction[0] *= -1
-        if coords[1] <= 0:
-            self.direction[1] *= -1
-        x = self.direction[0] * self.speed
-        y = self.direction[1] * self.speed
-        self.move(x, y)
+    def move_reflect(self,pos,vec):
+        x,y=pos
+        if x < 0 or x >640:
+            vec[0] *= -1
+
+        elif y < 0 or y > 480:
+            vec[1] *= -1
+
+        return vec
 
 class straightN(NPC):
-    def __init__(self, x, y, color):
+    def __init__(self, x, y):
         super(straightN, self).__init__(x, y,color=(0,0,255))
-        self.speed = 400
-        self.vec = [random.random()*2-1, random.random()*2-1]
+        self.speed = 300
 
     def update(self,dt):
-        pos = self.position
 
-        new_x = pos[0] + self.speed * self.vec[0] * dt
-        new_y = pos[1] + self.speed * self.vec[1] * dt
-        
-        self.position = (self.move_out(new_x,new_y))
-        self.cshape.center = self.position
+        self.position = self.move_out(self.position)
+        self.move(dt)
 
-    def move_out(self,x,y):
+
+    def move_out(self,pos):
+        x,y=pos
+
         if x < 0:
             x = 640
         elif x >640:
@@ -94,17 +87,17 @@ class MainLayer(cocos.layer.Layer):
 
     def __init__(self):
         super(MainLayer, self).__init__()
-        self.player = Actor(320, 240, (0, 0, 255))
+        self.player = Actor(320, 240, (255, 255, 255))
         self.add(self.player)
 
         for pos in [(100,100), (540,380), (540,100), (100,380)]:
-            self.add(NPC(pos[0], pos[1], (255, 0, 0)))
+            self.add(reflectN(pos[0], pos[1], (255, 0, 0)))
 
-        cell = self.player.width * 1.25
-        self.collman = cm.CollisionManagerGrid(0, 640, 0, 480,
-                                               cell, cell)
-        self.speed = 300.0
-        self.pressed = defaultdict(int)
+        #cell = self.player.width * 1.25
+        #self.collman = cm.CollisionManagerGrid(0, 640, 0, 480,
+        #                                       cell, cell)
+        #self.speed = 300.0
+        #self.pressed = defaultdict(int)
         self.schedule(self.update)
 
     def on_key_press(self, k, m):
@@ -114,27 +107,27 @@ class MainLayer(cocos.layer.Layer):
         self.pressed[k] = 0
         
     def update(self, dt):
-        self.collman.clear()
+        #self.collman.clear()
 
 
-        for _, node in self.children:
-            self.collman.add(node)
+        #for _, node in self.children:
+        #    self.collman.add(node)
 
         for _, node in self.children:
             node.update(dt)
 
-        for other in self.collman.iter_colliding(self.player):
-            self.remove(other)
-            self.add(NPC(random.randrange(0,640), random.randrange(0,480), (255, 0, 0)))
+        #for other in self.collman.iter_colliding(self.player):
+        #    self.remove(other)
+        #    self.add(NPC(random.randrange(0,640), random.randrange(0,480), (255, 0, 0)))
 
-        x = self.pressed[key.RIGHT] - self.pressed[key.LEFT]
-        y = self.pressed[key.UP] - self.pressed[key.DOWN]
-        if x != 0 or y != 0:
-            pos = self.player.position
-            new_x = pos[0] + self.speed * x * dt
-            new_y = pos[1] + self.speed * y * dt
-            self.player.position = self.player.move_out(new_x,new_y)
-            self.player.cshape.center = eu.Vector2(new_x, new_y)
+        #x = self.pressed[key.RIGHT] - self.pressed[key.LEFT]
+        #y = self.pressed[key.UP] - self.pressed[key.DOWN]
+        #if x != 0 or y != 0:
+        #    pos = self.player.position
+        #    new_x = pos[0] + self.speed * x * dt
+        #    new_y = pos[1] + self.speed * y * dt
+        #    self.player.position = self.player.move_out(new_x,new_y)
+        #    self.player.cshape.center = eu.Vector2(new_x, new_y)
 
 
 
