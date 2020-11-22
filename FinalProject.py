@@ -14,8 +14,8 @@ import cocos.actions as ac
 
 
 class Actor(cocos.sprite.Sprite):
-    def __init__(self, x, y, color, img='ball.png'):
-        super(Actor, self).__init__(img, color=color)
+    def __init__(self, x, y, img='ball.png'):
+        super(Actor, self).__init__(img)
         self.position = pos = eu.Vector2(x, y)
         self.cshape = cm.CircleShape(pos, self.width/2)
 
@@ -34,7 +34,8 @@ class PlayerCannon(Actor):
     KEYS_PRESSED = defaultdict(int)
 
     def __init__(self, x, y):
-        super(PlayerCannon, self).__init__(x, y, (255,255,255))
+        self.seq = ImageGrid(load('SpaceShip.png'), 4, 1)
+        super(PlayerCannon, self).__init__(x, y, self.seq[3])
         #self.x, self.y = self.position
         self.speed = 7
         self.timer =0
@@ -63,9 +64,19 @@ class PlayerCannon(Actor):
 
 
 
-        if (shootX != 0 or shootY !=0) and self.timer > 0.7:
+        if (shootX != 0 or shootY !=0) and self.timer > 0.6:
             if shootX != 0:
                 shootY = 0
+
+            if shootX == -1:
+                self.image = self.seq[0]
+            elif shootX == 1:
+                self.image = self.seq[2]
+            elif shootY == -1:
+                self.image = self.seq[1]
+            elif shootY == 1:
+                self.image = self.seq[3]
+
 
             self.timer = 0
             PShoot = PlayerShoot(self.x + w*shootX, self.y+ h*shootY, [shootX, shootY])
@@ -79,18 +90,19 @@ class PlayerCannon(Actor):
         
 
 
-
         if horizon != 0:
             if w > self.x and horizon == -1:
                 horizon = 0
             if self.x > self.parent.width - w and horizon == 1:
                 horizon = 0
             self.move(horizon,1)
+
+
             #for subC in self.sub:
             #    subC.move(self.speed * movement * elapsed)
 
         if virtical != 0:
-            if w > self.y and virtical == -1:
+            if h > self.y and virtical == -1:
                 virtical = 0
             if self.y > self.parent.height - h and virtical == 1:
                 virtical = 0
@@ -113,9 +125,14 @@ class PlayerCannon(Actor):
 
 
 
+
+
+
+
 class NPC(Actor):
-    def __init__(self, x, y, color):
-        super(NPC, self).__init__(x, y,color=color)
+    def __init__(self, x, y, img):
+        super(NPC, self).__init__(x, y, img)
+        self._set_scale(1+random.random()*0.7)
         self.speed = 400
         self.vec = [random.random()*2-1, random.random()*2-1]
 
@@ -131,7 +148,9 @@ class NPC(Actor):
 
 class reflectN(NPC):
     def __init__(self, x, y):
-        super(reflectN, self).__init__(x, y, color=(0,255,0))
+        seq = ImageGrid(load('ReflectNPC.png'), 4, 1)
+        self.img = Animation.from_image_sequence(seq, 0.2)
+        super(reflectN, self).__init__(x, y, self.img)
         self.speed = 200
 
     def update(self,dt):
@@ -150,7 +169,9 @@ class reflectN(NPC):
 
 class straightN(NPC):
     def __init__(self, x, y):
-        super(straightN, self).__init__(x, y,color=(0,0,255))
+        seq = ImageGrid(load('StraightNPC.png'), 4, 1)
+        self.img = Animation.from_image_sequence(seq, 0.2)
+        super(straightN, self).__init__(x, y,self.img)
         self.speed = 300
 
     def update(self,dt):
@@ -198,7 +219,7 @@ class chaseN(NPC):
 
 class Shoot(Actor):
     def __init__(self, x, y, vec, img='shoot.png'):
-        super(Shoot, self).__init__(x, y, (255,255,255), img)
+        super(Shoot, self).__init__(x, y, img)
         self.speed = 24
         self.vec = [0,0]
         self.vec[0] = vec[0]
@@ -220,7 +241,11 @@ class PlayerShoot(Shoot):
     INSTANCE = []
 
     def __init__(self, x, y, vec):
-        super(PlayerShoot, self).__init__(x, y, vec, 'laser.png')
+        seq = ImageGrid(load('laser.png'), 2, 1)
+        if vec[1] == 1 or vec[1] == -1:
+            super(PlayerShoot, self).__init__(x, y, vec, seq[1])
+        else:
+            super(PlayerShoot, self).__init__(x, y, vec, seq[0])
         PlayerShoot.INSTANCE.append(self)
         self.shootItem = False
 
@@ -266,7 +291,6 @@ class ChaseShoot(Shoot): #총알이 player의 움직임에 따라 움직임
         super(PlayerShoot, self).on_exit()
         if self in PlayerShoot.INSTANCE:
             PlayerShoot.INSTANCE.remove(self)
-
 
 
 class GameLayer(cocos.layer.Layer):
@@ -320,6 +344,7 @@ class GameLayer(cocos.layer.Layer):
         #    self.collide(instance)
 
         self.create_NPC()
+
 
 
     def create_NPC(self):
