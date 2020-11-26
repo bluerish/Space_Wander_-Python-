@@ -41,6 +41,7 @@ class PlayerCannon(Actor):
         #self.x, self.y = self.position
         self.speed = 7
         self.timer =0
+        self.subtimer = 0
         self.HP = 10
 
         self.sub =[]
@@ -56,6 +57,8 @@ class PlayerCannon(Actor):
         self.color = (255,255,255)
 
         if self.HP<=0:
+            for subC in self.sub:
+                subC.kill()
             self.sub.clear()
             self.kill()
 
@@ -67,6 +70,7 @@ class PlayerCannon(Actor):
         pressed = PlayerCannon.KEYS_PRESSED
         space_pressed = pressed[key.SPACE] == 1
         self.timer += elapsed
+        self.subtimer += elapsed
 
         horizon = pressed[key.D] - pressed[key.A]
         virtical = pressed[key.W] - pressed[key.S]
@@ -98,15 +102,21 @@ class PlayerCannon(Actor):
             self.shoot.append(PShoot)
             self.parent.add(PShoot)
 
-            self.sub[0].charge(0)
+
+        #if self.subtimer > 0.5:
+        #    self.subtimer = 0
             for subC in self.sub:
-                if random.random() < 0.5:
-                    if subC.energe == 15:
-                        self.parent.add(PlayerShoot(subC.x + w*shootX, 
+                if subC.energe == 15:
+                    if subC.number == 0:
+                        self.parent.add(reflectShoot(subC.x + w*shootX, 
+                                                    subC.y +h*shootY, 
+                                                    [shootX, shootY]))
+                    elif subC.number == 1:
+                        self.parent.add(straightShoot(subC.x + w*shootX, 
                                                     subC.y +h*shootY, 
                                                     [shootX, shootY]))
 
-        
+ #reflectShoot        straightShoot
 
 
         if horizon != 0:
@@ -146,11 +156,20 @@ class PlayerCannon(Actor):
         self.cshape.center = self.position
 
 
+    def chargeSub(self, NPC):
+        if NPC == 0:
+            self.sub[0].charge()
+        elif NPC == 1:
+            self.sub[1].charge()
+
+
+
 class SubCannon(Actor):
-    def __init__(self, x, y):
+    def __init__(self, x, y, num):
         super(SubCannon, self).__init__(x, y, 'Sub.png')
         self.speed = 7
         self.energe = 0
+        self.number = num
 
     def update(self, elapsed):
         pass
@@ -169,25 +188,32 @@ class SubCannon(Actor):
         self.position = eu.Vector2(new_x, new_y)
         self.cshape.center = self.position
 
-    def charge(self, npc):
-        print(self.energe)
-        if npc == 0:
+    def charge(self):
+
+        if self.number == 0:
             if self.energe < 15:
                 self.energe += 1
                 self.color = (255,255-9.2*self.energe, 255-17*self.energe)
                 #ff8b00
+        elif self.number == 1:
+             if self.energe < 15:
+                self.energe += 1
+                self.color = (255-17*self.energe,255-12.3*self.energe, 255)
+                #00b9ff
+
+        print(self.energe)
+
 
 
 
 class NPC(Actor):
     def __init__(self, x, y, img):
         super(NPC, self).__init__(x, y, img)
-        
+        rand = random.random()
 
-        self._set_scale(1+random.random()*0.7)
-        self.speed = 400
-        self.score = (10 + int(random.random()*10))
-        print(self.score)
+        self._set_scale(1+rand*0.7)
+        self.speed = 200
+        self.score = (15 + int(rand*10))
         self.vec = [random.random()*2-1, random.random()*2-1]
 
     def move(self,dt):
@@ -205,7 +231,7 @@ class reflectN(NPC):
         seq = ImageGrid(load('ReflectNPC.png'), 4, 1)
         self.img = Animation.from_image_sequence(seq, 0.2)
         super(reflectN, self).__init__(x, y, self.img)
-        self.speed = 200
+        #self.speed = 200
 
 
     def update(self,dt):
@@ -227,7 +253,7 @@ class straightN(NPC):
         seq = ImageGrid(load('StraightNPC.png'), 4, 1)
         self.img = Animation.from_image_sequence(seq, 0.2)
         super(straightN, self).__init__(x, y,self.img)
-        self.speed = 300
+        #self.speed = 300
 
     def update(self,dt):
         self.position = self.move_out(self.position)
@@ -281,7 +307,7 @@ class Shoot(Actor):
         self.vec[1] = vec[1]
 
     def update(self, elapsed):
-        self.move(self.speed * elapsed)
+        pass
 
     def move(self,dt):
         pos = self.position
@@ -302,26 +328,113 @@ class PlayerShoot(Shoot):
         else:
             super(PlayerShoot, self).__init__(x, y, vec, seq[0])
         PlayerShoot.INSTANCE.append(self)
-        self.shootItem = False
+        self.shootItem = -1
 
 
     def collide(self, other):
         if isinstance(other, NPC):
             self.parent.update_score(other.score)
-            #if other.item == True:
-            #    self.shootItem = True
+            if isinstance(other, reflectN):
+                self.shootItem = 0
+            elif isinstance(other, straightN):
+                self.shootItem = 1
+
             PlayerShoot.INSTANCE.remove(self)
             other.kill()
             self.kill()              
 
             return self.shootItem
 
+    def update(self, elapsed):
+        self.move(self.speed * elapsed)
+
+
     def on_exit(self):
         super(PlayerShoot, self).on_exit()
         if self in PlayerShoot.INSTANCE:
             PlayerShoot.INSTANCE.remove(self)
+
+
+class reflectShoot(Shoot):
+    INSTANCE = []
+
+    def __init__(self, x, y, vec):
+        seq = ImageGrid(load('Rlaser.png'), 2, 1)
+        if vec[1] == 1 or vec[1] == -1:
+            super(reflectShoot, self).__init__(x, y, vec, seq[1])
+        else:
+            super(reflectShoot, self).__init__(x, y, vec, seq[0])
+        reflectShoot.INSTANCE.append(self)
+
+
+
+    def collide(self, other):
+        if isinstance(other, NPC):
+            self.parent.update_score(other.score)
+            reflectShoot.INSTANCE.remove(self)
+            other.kill()
+            self.kill()              
+
+
+    def update(self,dt):
+        self.move(self.speed * dt)
+        self.vec = self.move_reflect(self.position,self.vec)
+
+
+    def move_reflect(self,pos,vec):
+        x,y=pos
+        if x < 0 or x > self.w:
+            vec[0] *= -1
+        elif y < 0 or y > self.h:
+            vec[1] *= -1
+
+        return vec
+
+
+class straightShoot(Shoot):
+    INSTANCE = []
+
+    def __init__(self, x, y, vec):
+        seq = ImageGrid(load('Slaser.png'), 2, 1)
+        if vec[1] == 1 or vec[1] == -1:
+            super(straightShoot, self).__init__(x, y, vec, seq[1])
+        else:
+            super(straightShoot, self).__init__(x, y, vec, seq[0])
+        straightShoot.INSTANCE.append(self)
+
+
+
+    def collide(self, other):
+        if isinstance(other, NPC):
+            self.parent.update_score(other.score)
+            straightShoot.INSTANCE.remove(self)
+            other.kill()
+            self.kill()              
+
+
+    def update(self,dt):
+        self.position = self.move_out(self.position)
+        self.move(self.speed * dt)
+
+
+    def move_out(self,pos):
+        x,y=pos
+
+        if x < 0:
+            x = self.w
+        elif x > self.w:
+            x = 0
+        if y < 0:
+            y = self.h
+        elif y > self.h:
+            y = 0
+
+        return x,y
+
+
+
         
-class ChaseShoot(Shoot): #ÃÑ¾ËÀÌ playerÀÇ ¿òÁ÷ÀÓ¿¡ µû¶ó ¿òÁ÷ÀÓ
+class ChaseShoot(Shoot): #ì´ì•Œì´ playerì˜ ì›€ì§ìž„ì— ë”°ë¼ ì›€ì§ìž„
     INSTANCE = []
 
     def __init__(self, x, y, vec):
@@ -366,9 +479,13 @@ class GameLayer(cocos.layer.Layer):
         self.height = h
 
         self.difficulty = difficulty
-        self.lives = 0
+        self.lives = 3
+
+        self.second = 0
         self.timer = 0
         self.score = 0
+
+
         self.update_score()
         self.create_player()
 
@@ -383,8 +500,8 @@ class GameLayer(cocos.layer.Layer):
 
     def create_player(self):
         self.player = PlayerCannon(self.width * 0.5, self.height*0.5)
-        SCLeft = SubCannon(self.width * 0.5 - 40, self.height*0.5)
-        SCRight = SubCannon(self.width * 0.5 + 40, self.height*0.5)
+        SCLeft = SubCannon(self.width * 0.5 - 40, self.height*0.5, 0)
+        SCRight = SubCannon(self.width * 0.5 + 40, self.height*0.5, 1)
 
         self.player.sub.append(SCLeft)
         self.player.sub.append(SCRight)
@@ -431,20 +548,27 @@ class GameLayer(cocos.layer.Layer):
 
         for instance in PlayerShoot.INSTANCE:
             self.collide(instance)
+        for instance in reflectShoot.INSTANCE:
+            self.collide(instance)
+        for instance in straightShoot.INSTANCE:
+            self.collide(instance)
+
 
         self.create_NPC()
 
-        self.timer += dt
-        if self.timer>=1:
-            self.update_score(int(self.timer))
-            self.timer = 0
+        self.second += dt
+        if self.second>=1:
+            self.update_score(int(self.second) * 10)
+            self.timer += self.second
+            self.second = 0
 
 
 
     def collide(self, node):
         if node is not None:
             for other in self.collman.iter_colliding(node):
-                node.collide(other)
+                item = node.collide(other)
+                self.player.chargeSub(item)
                 return True
         return False
 
@@ -454,7 +578,7 @@ class GameLayer(cocos.layer.Layer):
         range=0
         pos = (0,0)
 
-        if random.random() < 0.01:
+        if random.random() < (0.012+self.timer/10000):
             range = random.randrange(1,5)
             kind = random.randrange(1,3)
             
