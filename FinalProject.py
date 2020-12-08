@@ -1,4 +1,5 @@
 import random
+import math
 
 from collections import defaultdict
 
@@ -68,9 +69,14 @@ class PlayerCannon(Actor):
 
     def update(self, elapsed):
         pressed = PlayerCannon.KEYS_PRESSED
-        space_pressed = pressed[key.SPACE] == 1
+        Q_pressed = pressed[key.Q] == 1
+        E_pressed = pressed[key.E] == 1
         self.timer += elapsed
         self.subtimer += elapsed
+        subLCharged = False
+        subRCharged = False
+
+
 
         horizon = pressed[key.D] - pressed[key.A]
         virtical = pressed[key.W] - pressed[key.S]
@@ -80,22 +86,57 @@ class PlayerCannon(Actor):
 
         shootX = pressed[key.RIGHT] - pressed[key.LEFT]
         shootY = pressed[key.UP] - pressed[key.DOWN]
+        radian = 0
+        SubLshootX = 0
+        SubRshootX = 0
+        SubLshootY = 0
+        SubRshootY = 0
 
 
-
-        if (shootX != 0 or shootY !=0) and self.timer > 0.6:
+        if (shootX != 0 or shootY !=0) and self.timer > 0.7:
             if shootX != 0:
                 shootY = 0
 
+
             if shootX == -1:
                 self.image = self.seq[0]
+                self.sub[0].position = [self.x, self.y -40]
+                self.sub[1].position = [self.x, self.y +40]
+
+                SubLshootX = 0
+                SubRshootX = 0
+                SubLshootY = -1
+                SubRshootY = 1
+
             elif shootX == 1:
                 self.image = self.seq[2]
+                self.sub[0].position = [self.x, self.y +40]
+                self.sub[1].position = [self.x, self.y -40]
+
+                SubLshootX = 0
+                SubRshootX = 0
+                SubLshootY = 1
+                SubRshootY = -1
+
             elif shootY == -1:
                 self.image = self.seq[1]
+                self.sub[0].position = [self.x+40, self.y]
+                self.sub[1].position = [self.x-40, self.y]
+
+                SubLshootX = 1
+                SubRshootX = -1
+                SubLshootY = 0
+                SubRshootY = 0
+
             elif shootY == 1:
                 self.image = self.seq[3]
+                self.sub[0].position = [self.x-40, self.y]
+                self.sub[1].position = [self.x+40, self.y]
 
+                SubLshootX = -1
+                SubRshootX = 1
+                SubLshootY = 0
+                SubRshootY = 0
 
             self.timer = 0
             PShoot = PlayerShoot(self.x + w*shootX, self.y+ h*shootY, [shootX, shootY])
@@ -103,21 +144,50 @@ class PlayerCannon(Actor):
             self.parent.add(PShoot)
 
 
-        #if self.subtimer > 0.5:
-        #    self.subtimer = 0
             for subC in self.sub:
-                if subC.energe == 15:
-                    if subC.number == 0:
-                        self.parent.add(reflectShoot(subC.x + w*shootX, 
-                                                    subC.y +h*shootY, 
-                                                    [shootX, shootY]))
-                    elif subC.number == 1:
-                        self.parent.add(straightShoot(subC.x + w*shootX, 
-                                                    subC.y +h*shootY, 
-                                                    [shootX, shootY]))
+                if subC.charged:
+                    if random.random() > 0.7:
+
+                        if subC.number == 0:
+                            subLCharged = subC.charged;
+                            self.parent.add(reflectShoot(subC.x + w*SubLshootX, 
+                                                        subC.y +h*SubLshootY, 
+                                                        [SubLshootX, SubLshootY]))
+                        elif subC.number == 1:
+                            subRCharged = subC.charged;
+                            self.parent.add(straightShoot(subC.x + w*SubRshootX, 
+                                                        subC.y +h*SubRshootY, 
+                                                        [SubRshootX, SubRshootY]))
 
  #reflectShoot        straightShoot
 
+
+        if Q_pressed != 0 and self.sub[0].charged:
+            self.sub[0].discharge()
+            LBomb = []
+            for i in range(0, 4):
+                LBomb.append(reflectShoot(self.x + 40 + (40 * (-1)*math.cos(math.radians(0+90*i))), 
+                                          self.y - 40 + (40 * (-1)*math.sin(math.radians(0+90*i))), 
+                                          [math.sin(math.radians(0+90*i)), math.cos(math.radians(0+90*i))]))
+                LBomb.append(reflectShoot(self.x - 40 + (40 * (-1)*math.cos(math.radians(0+90*i))), 
+                                          self.y + 40 + (40 * (-1)*math.sin(math.radians(0+90*i))), 
+                                          [math.sin(math.radians(0+90*i)), math.cos(math.radians(0+90*i))]))
+            for LB in LBomb:
+                self.parent.add(LB)
+
+        if E_pressed != 0 and self.sub[1].charged:
+            self.sub[1].discharge()
+            RBomb = []
+            for i in range(0, 4):
+                RBomb.append(straightShoot(self.x + 40 + (40 * (-1)*math.sin(math.radians(0+90*i))), 
+                                          self.y - 40 + (40 * (-1)*math.cos(math.radians(0+90*i))), 
+                                          [math.sin(math.radians(0+90*i)), math.cos(math.radians(0+90*i))]))
+                RBomb.append(straightShoot(self.x - 40 + (40 * (-1)*math.sin(math.radians(0+90*i))), 
+                                          self.y + 40 + (40 * (-1)*math.cos(math.radians(0+90*i))), 
+                                          [math.sin(math.radians(0+90*i)), math.cos(math.radians(0+90*i))]))
+            for RB in RBomb:
+                self.parent.add(RB)
+             
 
         if horizon != 0:
             if w > self.x and horizon == -1:
@@ -170,6 +240,7 @@ class SubCannon(Actor):
         self.speed = 7
         self.energe = 0
         self.number = num
+        self.charged = False
 
     def update(self, elapsed):
         pass
@@ -195,13 +266,22 @@ class SubCannon(Actor):
                 self.energe += 1
                 self.color = (255,255-9.2*self.energe, 255-17*self.energe)
                 #ff8b00
+            else:
+                self.charged = True
+
+
         elif self.number == 1:
              if self.energe < 15:
                 self.energe += 1
                 self.color = (255-17*self.energe,255-12.3*self.energe, 255)
                 #00b9ff
+             else:
+                self.charged = True
 
-        print(self.energe)
+    def discharge(self):
+        self.energe = 0
+        self.charged = False
+        self.color = (255,255, 255)
 
 
 
@@ -434,31 +514,7 @@ class straightShoot(Shoot):
 
 
         
-class ChaseShoot(Shoot): #총알이 player의 움직임에 따라 움직임
-    INSTANCE = []
 
-    def __init__(self, x, y, vec):
-        super(PlayerShoot, self).__init__(x, y, vec, 'laser.png')
-        self.speed *= -1
-        PlayerShoot.INSTANCE.append(self)
-        self.shootItem = False
-
-
-    def collide(self, other):
-        if isinstance(other, Alien):
-            self.parent.update_score(other.score)
-            if other.item == True:
-                self.shootItem = True
-            PlayerShoot.INSTANCE.remove(self)
-            other.kill()
-            self.kill()              
-
-            return self.shootItem
-
-    def on_exit(self):
-        super(PlayerShoot, self).on_exit()
-        if self in PlayerShoot.INSTANCE:
-            PlayerShoot.INSTANCE.remove(self)
 
 
 class GameLayer(cocos.layer.Layer):
@@ -479,20 +535,22 @@ class GameLayer(cocos.layer.Layer):
         self.height = h
 
         self.difficulty = difficulty
-        self.lives = 3
+        self.lives = 2
 
         self.second = 0
         self.timer = 0
         self.score = 0
 
 
+        #self.hud.tutorial()
+
         self.update_score()
         self.create_player()
+        self.hud.update_timer(self.timer)
 
         cell = self.player.width * 1.25
         self.collman = cm.CollisionManagerGrid(0, w, 0, h,
                                                cell, cell)
-
 
 
         self.schedule(self.update)
@@ -516,9 +574,12 @@ class GameLayer(cocos.layer.Layer):
         self.lives -= 1
         if self.lives < 0:
             self.unschedule(self.update)
-            self.hud.show_game_over(self.score)
+            self.hud.show_game_over(self.score, self.timer)
         else:
+            for _, node in self.children:
+                self.remove(node)
             self.create_player()
+
 
     def update_score(self, score=0):
         self.score += score
@@ -559,7 +620,8 @@ class GameLayer(cocos.layer.Layer):
         self.second += dt
         if self.second>=1:
             self.update_score(int(self.second) * 10)
-            self.timer += self.second
+            self.timer += int(self.second)
+            self.hud.update_timer(self.timer)
             self.second = 0
 
 
@@ -578,7 +640,7 @@ class GameLayer(cocos.layer.Layer):
         range=0
         pos = (0,0)
 
-        if random.random() < (0.012+self.timer/10000):
+        if random.random() < (0.012+0.003*self.difficulty +self.timer/7000):
             range = random.randrange(1,5)
             kind = random.randrange(1,3)
             
@@ -596,8 +658,6 @@ class GameLayer(cocos.layer.Layer):
                 self.add(straightN(pos[0], pos[1]))
             elif kind == 2:
                 self.add(reflectN(pos[0], pos[1]))
-            #elif kind == 3:
-            #    self.add(chaseN(pos[0], pos[1]))
 
 
 
@@ -607,16 +667,29 @@ class HUD(cocos.layer.Layer):
         w, h = cocos.director.director.get_window_size()
         self.score_text = cocos.text.Label('', font_size=18)
         self.score_text.position = (20, h - 40)
+        self.timer_text = cocos.text.Label('', font_size=18)
+        self.timer_text.position = (20, h - 80)
         self.lives_text = cocos.text.Label('', font_size=18)
         self.lives_text.position = (w - 100, h - 40)
         self.HP_text = cocos.text.Label('', font_size=18)
         self.HP_text.position = (w-190, h - 40)
         self.add(self.score_text)
+        self.add(self.timer_text)
         self.add(self.lives_text)
         self.add(self.HP_text)
 
+        move = cocos.text.Label('Move: WASD', font_size=18, position = (w/2, h - 40), anchor_x = 'center')
+        shoot = cocos.text.Label('Shoot: Up, Down, Left, Right', font_size=18, position = (w/2, h - 60), anchor_x = 'center')
+        bomb = cocos.text.Label('Bomb: Left - Q, Right - E', font_size=18, position = (w/2, h - 80), anchor_x = 'center')
+        self.add(move)
+        self.add(shoot)
+        self.add(bomb)
+
     def update_score(self, score):
         self.score_text.element.text = 'Score: %s' % score
+
+    def update_timer(self, timer):
+        self.timer_text.element.text = 'Timer: %s' % timer
 
     def update_lives(self, lives):
         self.lives_text.element.text = 'Lives: %s' % lives
@@ -626,29 +699,28 @@ class HUD(cocos.layer.Layer):
 
 
 
-    def show_game_over(self,score):
+    def show_game_over(self,score, timer):
         w, h = cocos.director.director.get_window_size()
 
         game_over = cocos.text.Label('Game Over', font_size=50,
                                      anchor_x='center',
                                      anchor_y='center')
-        game_over.position = w * 0.5, h * 0.5
+        game_over.position = w * 0.5, h * 0.7
         self.add(game_over)
 
         score_final = cocos.text.Label('Your Score: '+ str(score), font_size=30,
                                      anchor_x='center',
                                      anchor_y='center')
-        score_final.position = w * 0.5, h * 0.35
+        score_final.position = w * 0.5, h * 0.5
         self.add(score_final)
 
-     
-    def show_you_win(self):
-        w, h = cocos.director.director.get_window_size()
-        you_win = cocos.text.Label('You Win!', font_size=50,
+        timer_final = cocos.text.Label('Total Playtime: '+ str(timer), font_size=30,
                                      anchor_x='center',
                                      anchor_y='center')
-        you_win.position = w * 0.5, h * 0.5
-        self.add(you_win)
+        timer_final.position = w * 0.5, h * 0.35
+        self.add(timer_final)
+
+
 
 class MainMenu(menu.Menu):
     def __init__(self):
@@ -670,16 +742,41 @@ class MainMenu(menu.Menu):
         # zoom_in(), zoom_out()
 
 
-    def set_difficulty(self, index):
-        self.selDifficulty = index
-        print('Difficulty set to', self.selDifficulty)
-
     def new_menu(): # create menu
         scene = cocos.scene.Scene()
         color_layer = cocos.layer.ColorLayer(0,0,0, 255)
         scene.add(MainMenu(), z=1)
         scene.add(color_layer, z=0)
         return scene
+
+    def set_difficulty(self, index):
+        self.selDifficulty = index
+        print('Difficulty set to', self.selDifficulty)
+
+
+
+
+    def tutorial(self):
+        w, h = cocos.director.director.get_window_size()
+        move = cocos.text.Label('Move: WASD', font_size=18, position = (w/2, h - 40))
+        shoot = cocos.text.Label('Shoot: Up, Down, Left, Right', font_size=18, position = (w/2, h - 60))
+        bomb = cocos.text.Label('Bomb: Left - Q, Right - E', font_size=18, position = (w/2, h - 80))
+
+
+        layer = cocos.layer.Layer()
+        layer.add(move, shoot, bomb)
+
+        tutorial_scene = cocos.scene.Scene()
+        tutorial_scene.add(layer, z=2)
+
+        start = menu.MenuItem('Start', self.new_game)
+        tutorial_scene.add(start, z=1)
+
+        color_layer = cocos.layer.ColorLayer(0,0,0, 255)
+        tutorial_scene.add(color_layer, z=0)
+
+        cocos.director.director.run(tutorial_scene)
+
 
     def new_game(self): # gamelayer.py
 
