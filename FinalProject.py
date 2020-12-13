@@ -5,6 +5,7 @@ from collections import defaultdict
 
 from pyglet.image import load, ImageGrid, Animation
 from pyglet.window import key
+import pyglet.media as media
 import pyglet.app
 
 import cocos.layer
@@ -50,6 +51,14 @@ class PlayerCannon(Actor):
         self.shoot = []
         self.vec = [0,1]
         self.shootPoint = [0,0]
+
+        self.soundPlayer = media.Player()
+        self.shoot_sound = media.load('shoot.wav')
+        self.shootS_sound = media.load('shootS.mp3', streaming=False)
+        self.shootR_sound = media.load('shootR.wav', streaming=False)
+        self.BombS_sound = media.load('BombS.wav', streaming=False)
+        self.BombR_sound = media.load('BombR.wav', streaming=False)
+
 
     def collide(self, other):
         self.HP -= 1
@@ -143,6 +152,8 @@ class PlayerCannon(Actor):
             self.shoot.append(PShoot)
             self.parent.add(PShoot)
 
+            self.soundPlayer.queue(self.shoot_sound)
+
 
             for subC in self.sub:
                 if subC.charged:
@@ -153,11 +164,21 @@ class PlayerCannon(Actor):
                             self.parent.add(reflectShoot(subC.x + w*SubLshootX, 
                                                         subC.y +h*SubLshootY, 
                                                         [SubLshootX, SubLshootY]))
+                            self.shootS_sound.play()
+
                         elif subC.number == 1:
                             subRCharged = subC.charged;
                             self.parent.add(straightShoot(subC.x + w*SubRshootX, 
                                                         subC.y +h*SubRshootY, 
                                                         [SubRshootX, SubRshootY]))
+                            self.shootR_sound.play()
+
+
+            self.soundPlayer.play()
+            pyglet.app.run()
+            pyglet.app.exit()
+
+
 
  #reflectShoot        straightShoot
 
@@ -174,6 +195,7 @@ class PlayerCannon(Actor):
                                           [math.sin(math.radians(0+90*i)), math.cos(math.radians(0+90*i))]))
             for LB in LBomb:
                 self.parent.add(LB)
+            self.BombS_sound.play()
 
         if E_pressed != 0 and self.sub[1].charged:
             self.sub[1].discharge()
@@ -187,6 +209,11 @@ class PlayerCannon(Actor):
                                           [math.sin(math.radians(0+90*i)), math.cos(math.radians(0+90*i))]))
             for RB in RBomb:
                 self.parent.add(RB)
+            self.BombR_sound.play()
+
+
+            pyglet.app.run()
+            pyglet.app.exit()
              
 
         if horizon != 0:
